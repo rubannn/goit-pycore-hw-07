@@ -267,7 +267,8 @@ def show_all(book):
 
     if not book:
         return "No contacts saved."
-    return "\n".join(f"{name}: {phone}" for name, phone in book.data.items())
+    return "\n".join(f"{record}" for record in book.data.values())
+
 
 
 def main():
