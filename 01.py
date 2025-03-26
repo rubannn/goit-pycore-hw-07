@@ -43,6 +43,7 @@
 
 from collections import UserDict
 import re
+from datetime import datetime, date
 
 from colorama import init, Fore
 
@@ -72,10 +73,20 @@ class Phone(Field):
         super().__init__(value)
 
 
+class Birthday(Field):
+    def __init__(self, value):
+        try:
+            self.value = datetime.strptime(value, "%d.%m.%Y").date()
+        except ValueError:
+            # raise ValueError("Invalid date format. Use DD.MM.YYYY")
+            print(ERROR + "Invalid date format. Use DD.MM.YYYY")
+
+
 class Record:
     def __init__(self, name):
         self.name = Name(name)
         self.phones = []
+        self.birthday = None
 
     def add_phone(self, phone):
         """Додавання телефонів"""
@@ -102,6 +113,10 @@ class Record:
                 return phone
         return None
 
+    def add_birthday(self, birthday):
+        """Додавання дня народження"""
+        self.birthday = Birthday(birthday)
+
     def __str__(self):
         return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}"
 
@@ -120,25 +135,35 @@ class AddressBook(UserDict):
         if name in self.data:
             del self.data[name]
 
+    def get_upcoming_birthdays(self):
+        date_format = "%Y.%m.%d"
+        result = []
+        today = datetime.today().date()
+        for record in self.data.values():
+            name = record.name.value
+            birthday = datetime.strptime(record.birthday, date_format).date()
+            birthday_this_year = date(today.year, birthday.month, birthday.day)
+            birthday_next_year = date(today.year + 1, birthday.month, birthday.day)
+            delta = (birthday_this_year - today).days
+            delta_next = (birthday_next_year - today).days
+            if 0 <= delta <= 7:
+                result.append(
+                    {
+                        "name": name,
+                        "congratulation_date": birthday_this_year.strftime(date_format),
+                    }
+                )
+            elif 0 <= delta_next <= 7:
+                result.append(
+                    {
+                        "name": name,
+                        "congratulation_date": birthday_next_year.strftime(date_format),
+                    }
+                )
+        return result
+
     def __str__(self):
         return "\n".join(str(record) for record in self.data.values())
-
-
-class Birthday(Field):
-    def __init__(self, value):
-        try:
-            # Додайте перевірку коректності даних
-            # та перетворіть рядок на об'єкт datetime
-            ...
-        except ValueError:
-            raise ValueError("Invalid date format. Use DD.MM.YYYY")
-
-
-class Record:
-    def __init__(self, name):
-        self.name = Name(name)
-        self.phones = []
-        self.birthday = None
 
 
 # Створення нової адресної книги
@@ -155,6 +180,7 @@ book.add_record(john_record)
 # Створення та додавання нового запису для Jane
 jane_record = Record("Jane")
 jane_record.add_phone("9876543210")
+jane_record.add_birthday("13.13.2005")
 book.add_record(jane_record)
 
 # Виведення всіх записів у книзі
