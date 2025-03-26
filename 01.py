@@ -166,36 +166,148 @@ class AddressBook(UserDict):
         return "\n".join(str(record) for record in self.data.values())
 
 
-# Створення нової адресної книги
-book = AddressBook()
+def input_error(func):
+    """Декоратор для обробки помилок введення користувача."""
 
-# Створення запису для John
-john_record = Record("John")
-john_record.add_phone("1234567890")
-john_record.add_phone("555555555")
+    def inner(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except ValueError:
+            return ERROR + f"\tGive me name and phone please. Format: <name> <phone>"
+        except KeyError:
+            return ERROR + f"\tContact not found."
+        except IndexError:
+            return ERROR + f"\tNot enough arguments provided."
 
-# Додавання запису John до адресної книги
-book.add_record(john_record)
+    return inner
 
-# Створення та додавання нового запису для Jane
-jane_record = Record("Jane")
-jane_record.add_phone("9876543210")
-jane_record.add_birthday("13.13.2005")
-book.add_record(jane_record)
 
-# Виведення всіх записів у книзі
-for name, record in book.data.items():
-    print(record)
+@input_error
+def parse_input(user_input):
+    """Розбирає введений користувачем рядок на команду та аргументи."""
 
-# Знаходження та редагування телефону для John
-john = book.find("John")
-john.edit_phone("1234567890", "1112223333")
+    cmd, *args = user_input.split()
+    cmd = cmd.strip().lower()
+    return cmd, *args
 
-print(john)  # Виведення: Contact name: John, phones: 1112223333; 5555555555
 
-# Пошук конкретного телефону у записі John
-found_phone = john.find_phone("5555555555")
-print(f"{john.name}: {found_phone}")  # Виведення: 5555555555
+@input_error
+def add_contact(args, book: AddressBook):
+    name, phone, *_ = args
+    record = book.find(name)
+    message = "Contact updated."
+    if record is None:
+        record = Record(name)
+        book.add_record(record)
+        message = "Contact added."
+    if phone:
+        record.add_phone(phone)
+    return message
 
-# Видалення запису Jane
-book.delete("Jane")
+
+@input_error
+def change_contact(args, book):
+    """Змінює телефон існуючого контакту."""
+
+    name, old_phone, new_phone = args
+    record = book.find(name)
+    if record:
+        return record.edit_phone(old_phone, new_phone)
+    return ERROR + "Contact not found."
+
+
+@input_error
+def show_phone(args, book):
+    """Показує телефон контакту."""
+
+    name = args[0]
+    record = book.find(name)
+    if record:
+        return f"{name}: {', '.join(p.value for p in record.phones)}"
+    return ERROR + "Contact not found."
+
+
+@input_error
+def add_birthday(args, book):
+    """Додає день народження до контакту."""
+
+    name, birthday = args
+    record = book.find(name)
+    if record:
+        record.add_birthday(birthday)
+        return "Birthday added."
+    return ERROR + "Contact not found."
+
+
+@input_error
+def show_birthday(args, book):
+    """Повертає дату дня народження контакту."""
+
+    name = args[0]
+    record = book.find(name)
+    if record and record.birthday:
+        return f"{name}'s birthday: {record.birthday.value.strftime('%d.%m.%Y')}"
+    return ERROR + "Birthday not found."
+
+
+@input_error
+def birthdays(book):
+    """Повертає список контактів із днями народження на наступний тиждень."""
+
+    upcoming = book.get_upcoming_birthdays()
+    if upcoming:
+        return "Upcoming birthdays:\n" + "\n".join(
+            f"{item['name']}: {item['congratulation_date']}" for item in upcoming
+        )
+    return "No upcoming birthdays."
+
+
+def show_all(book):
+    """Повертає всі контакти у книзі."""
+
+    if not book:
+        return "No contacts saved."
+    return "\n".join(f"{name}: {phone}" for name, phone in book.data.items())
+
+
+def main():
+    book = AddressBook()
+    print("Welcome to the assistant bot!")
+    while True:
+        user_input = input("Enter a command: ")
+        command, *args = parse_input(user_input)
+
+        if command in ["close", "exit"]:
+            print("Good bye!")
+            break
+
+        elif command == "hello":
+            print("How can I help you?")
+
+        elif command == "add":
+            print(add_contact(args, book))
+
+        elif command == "change":
+            print(change_contact(args, book))
+
+        elif command == "phone":
+            print(show_phone(args, book))
+
+        elif command == "all":
+            print(show_all(book))
+
+        elif command == "add-birthday":
+            print(add_birthday(args, book))
+
+        elif command == "show-birthday":
+            print(show_birthday(args, book))
+
+        elif command == "birthdays":
+            print(birthdays(book))
+
+        else:
+            print("Invalid command.")
+
+
+if __name__ == "__main__":
+    main()
