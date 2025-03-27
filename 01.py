@@ -50,6 +50,8 @@ from colorama import init, Fore
 init(autoreset=True)
 ERROR = Fore.RED
 
+DATE_FORMAT = "%d.%m.%Y"
+
 
 class Field:
     def __init__(self, value):
@@ -76,10 +78,13 @@ class Phone(Field):
 class Birthday(Field):
     def __init__(self, value):
         try:
-            self.value = datetime.strptime(value, "%d.%m.%Y").date()
+            self.value = datetime.strptime(value, DATE_FORMAT).date()
         except ValueError:
             # raise ValueError("Invalid date format. Use DD.MM.YYYY")
             print(ERROR + "Invalid date format. Use DD.MM.YYYY")
+
+    def __str__(self):
+        return self.value.strftime(DATE_FORMAT) if self.value else "---"
 
 
 class Record:
@@ -118,7 +123,7 @@ class Record:
         self.birthday = Birthday(birthday)
 
     def __str__(self):
-        return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}"
+        return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}, birthday: {self.birthday if self.birthday else '---'}"
 
 
 class AddressBook(UserDict):
@@ -136,30 +141,34 @@ class AddressBook(UserDict):
             del self.data[name]
 
     def get_upcoming_birthdays(self):
-        date_format = "%Y.%m.%d"
         result = []
         today = datetime.today().date()
         for record in self.data.values():
-            name = record.name.value
-            birthday = datetime.strptime(record.birthday, date_format).date()
-            birthday_this_year = date(today.year, birthday.month, birthday.day)
-            birthday_next_year = date(today.year + 1, birthday.month, birthday.day)
-            delta = (birthday_this_year - today).days
-            delta_next = (birthday_next_year - today).days
-            if 0 <= delta <= 7:
-                result.append(
-                    {
-                        "name": name,
-                        "congratulation_date": birthday_this_year.strftime(date_format),
-                    }
-                )
-            elif 0 <= delta_next <= 7:
-                result.append(
-                    {
-                        "name": name,
-                        "congratulation_date": birthday_next_year.strftime(date_format),
-                    }
-                )
+            if record.birthday:
+                name = record.name.value
+                birthday = record.birthday.value
+                birthday_this_year = date(today.year, birthday.month, birthday.day)
+                birthday_next_year = date(today.year + 1, birthday.month, birthday.day)
+                delta = (birthday_this_year - today).days
+                delta_next = (birthday_next_year - today).days
+                if 0 <= delta <= 7:
+                    result.append(
+                        {
+                            "name": name,
+                            "congratulation_date": birthday_this_year.strftime(
+                                DATE_FORMAT
+                            ),
+                        }
+                    )
+                elif 0 <= delta_next <= 7:
+                    result.append(
+                        {
+                            "name": name,
+                            "congratulation_date": birthday_next_year.strftime(
+                                DATE_FORMAT
+                            ),
+                        }
+                    )
         return result
 
     def __str__(self):
@@ -268,7 +277,6 @@ def show_all(book):
     if not book:
         return "No contacts saved."
     return "\n".join(f"{record}" for record in book.data.values())
-
 
 
 def main():
